@@ -1,10 +1,12 @@
-from django.urls import path
+from django.urls import path, include
+from rest_framework.routers import DefaultRouter
+from .views import *
 
-from . import views
+# Create a router and register our viewsets
+router = DefaultRouter()
+router.register('categories', CategoryViewSet)
+router.register('expenses',ExpenseViewSet)
 
 urlpatterns = [
-    path("categories/", views.category_list, name="category-list"),
-    path("expenses/", views.expense_list, name="expense-list"),
-    path("expenses/<pk>/", views.expense_detail, name="expense-detail"),
-    path("expenses/summary/", views.expense_summary, name="expense-summary"),
+    path('', include(router.urls)),
 ]
