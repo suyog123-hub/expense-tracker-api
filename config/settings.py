@@ -22,6 +22,7 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "rest_framework",
     'rest_framework_simplejwt',
+    'drf_spectacular', 
     "expenses",
 ]
 
@@ -93,6 +94,14 @@ REST_FRAMEWORK = {
         "rest_framework.renderers.JSONRenderer",
         "rest_framework.renderers.BrowsableAPIRenderer",
     ],
+    'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
+
+}
+SPECTACULAR_SETTINGS = {
+    'TITLE': 'Expense Tracker API',
+    'DESCRIPTION': 'API for tracking personal expenses with currency conversion',
+    'VERSION': '1.0.0',
+    'SERVE_INCLUDE_SCHEMA': False,
 }
 
 from datetime import timedelta
@@ -104,3 +113,19 @@ SIMPLE_JWT = {
     "BLACKLIST_AFTER_ROTATION": False,
     "AUTH_HEADER_TYPES": ("Bearer",),
 }
+
+
+
+# Add Telegram Bot Configuration (get these from @BotFather on Telegram)
+TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "")
+TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID", "")
+
+# Add to .env file
+
+
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'smtp.gmail.com'
+EMAIL_USE_TLS = True
+EMAIL_PORT = 587
+EMAIL_HOST_USER = 'ksuyog697@gmail.com'
+EMAIL_HOST_PASSWORD = 'dnms gift pjpm yqva'

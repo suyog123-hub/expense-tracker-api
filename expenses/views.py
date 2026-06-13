@@ -1,4 +1,4 @@
-# views.py
+# expenses/views.py
 
 from rest_framework import viewsets, status, generics
 from rest_framework.decorators import action
@@ -10,64 +10,47 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth import authenticate
 from django.contrib.auth.models import User
 from django.db.models import Sum
-from collections import defaultdict
+from django.core.mail import send_mail
 
 from .models import Category, Expense
 from .serializers import CategorySerializer, ExpenseSerializer, Userserializer
-from .currency import convert_amount, SUPPORTED_CURRENCIES 
+from .currency import convert_amount, SUPPORTED_CURRENCIES
 
 
-class RegisterView(generics.CreateAPIView):   
-    queryset           = User.objects.all()
-    serializer_class   = Userserializer
+class RegisterView(generics.CreateAPIView):
+    queryset = User.objects.all()
+    serializer_class = Userserializer
     permission_classes = [AllowAny]
 
 
-class LoginView(APIView):                       
-    permission_classes     = [AllowAny]
-    authentication_classes = []
+class LoginView(APIView):
+    permission_classes = [AllowAny]
 
     def post(self, request):
         username = request.data.get("username")
         password = request.data.get("password")
-
+        
         if not username or not password:
-            return Response(
-                {"error": "Please provide both username and password."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
+            return Response({"error": "Username and password required"}, status=400)
+        
         user = authenticate(request, username=username, password=password)
-
-        if user is None:
-            return Response(
-                {"error": "Invalid username or password."},
-                status=status.HTTP_401_UNAUTHORIZED,
-            )
-
-        if not user.is_active:
-            return Response(
-                {"error": "Account is disabled."},
-                status=status.HTTP_403_FORBIDDEN,
-            )
-
+        
+        if not user:
+            return Response({"error": "Invalid credentials"}, status=401)
+        
         refresh = RefreshToken.for_user(user)
-        return Response(
-            {
-                "refresh":  str(refresh),
-                "access":   str(refresh.access_token),
-                "user_id":  user.id,
-                "username": user.username,
-                "message":  "Login successful.",
-            },
-            status=status.HTTP_200_OK,
-        )
+        return Response({
+            "refresh": str(refresh),
+            "access": str(refresh.access_token),
+            "user_id": user.id,
+            "username": user.username,
+        })
 
 
 class CategoryViewSet(viewsets.ModelViewSet):
-    serializer_class       = CategorySerializer
-    authentication_classes = [JWTAuthentication]   
-    permission_classes     = [IsAuthenticated]     
+    serializer_class = CategorySerializer
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
         return Category.objects.filter(user=self.request.user)
@@ -82,7 +65,6 @@ class ExpenseViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        """Get user's expenses with date filtering"""
         queryset = Expense.objects.filter(category__user=self.request.user)
         
         start_date = self.request.query_params.get("start_date")
@@ -97,37 +79,69 @@ class ExpenseViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=["get"], url_path="summary")
     def expense_summary(self, request):
-        """Get total spent per category in selected currency"""
+        base_currency = request.query_params.get("base_currency", "USD").upper()
         
-        base_currency = request.query_params.get("base_currency", "USD")
+        if base_currency not in SUPPORTED_CURRENCIES:
+            return Response({"error": f"Unsupported currency"}, status=400)
+
         expenses = self.get_queryset()
         
         if not expenses:
-            return Response({
-                "base_currency": base_currency,
-                "categories": [],
-                "total_spent": 0
-            })
-        category_totals = {}
+            return Response({"base_currency": base_currency, "categories": [], "total_spent": 0})
+
+        # Calculate totals per category
+        category_data = {}
         total_spent = 0
-        
+
         for expense in expenses:
             cat_name = expense.category.name
+            converted = convert_amount(float(expense.amount), expense.currency, base_currency)
             
-            converted = convert_amount(
-                float(expense.amount), 
-                expense.currency, 
-                base_currency
-            )
+            if cat_name not in category_data:
+                category_data[cat_name] = {
+                    "total": 0,
+                    "monthly_limit": float(expense.category.monthly_limit) if expense.category.monthly_limit else None
+                }
             
-            category_totals[cat_name] = category_totals.get(cat_name, 0) + converted
+            category_data[cat_name]["total"] += converted
             total_spent += converted
-        
-        categories = [
-            {"category": name, "total": round(total, 2)}
-            for name, total in category_totals.items()
-        ]
-        
+# send mail directly to the user if expenses exceed 
+        """
+        ⚠️I encountered a minor issue while implementing the Telegram bot for over-expense notifications, so I have decided to use email notifications instead.⚠️
+        """
+        categories = []
+        for name, data in category_data.items():
+            total = round(data["total"], 2)
+            limit = data["monthly_limit"]
+            is_over = (total > limit) if limit else False
+
+            if is_over and request.user.email:
+                send_mail(
+                    subject=f"⚠️ Budget Alert: {name}",
+                message=f"""
+Hi {request.user.username},
+
+Your {name} spending has reached {total} {base_currency}.
+Monthly limit: {limit} {base_currency}
+Over by: {round(total - limit, 2)} {base_currency}
+
+Regards,
+Expense Tracker App
+                    """,
+                    from_email='ksuyog697@gmail.com',
+                    recipient_list=[request.user.email],
+                    fail_silently=True,
+                )
+            
+            categories.append({
+                "category": name,
+                "total_spent": total,
+                "currency": base_currency,
+                "monthly_limit": limit,
+                "over_budget": is_over,
+                "over_spend":round((total - limit), 2) if is_over else 0,
+            })
+
         return Response({
             "base_currency": base_currency,
             "total_spent": round(total_spent, 2),
