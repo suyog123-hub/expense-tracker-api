@@ -40,7 +40,7 @@ class CategorySerializer(serializers.ModelSerializer):
         fields = [
             "id", "name", "description",
             "monthly_limit",
-            "created_at",
+            "created_at",'is_favorite',
         ]
         read_only_fields = ["created_at", ]
 
