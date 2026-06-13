@@ -1,5 +1,4 @@
 # expenses/views.py
-
 from rest_framework import viewsets, status, generics
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -11,7 +10,8 @@ from django.contrib.auth import authenticate
 from django.contrib.auth.models import User
 from django.db.models import Sum
 from django.core.mail import send_mail
-
+from django_filters.rest_framework import DjangoFilterBackend
+from rest_framework.filters import SearchFilter ,OrderingFilter
 from .models import Category, Expense
 from .serializers import CategorySerializer, ExpenseSerializer, Userserializer
 from .currency import convert_amount, SUPPORTED_CURRENCIES
@@ -63,10 +63,17 @@ class ExpenseViewSet(viewsets.ModelViewSet):
     serializer_class = ExpenseSerializer
     authentication_classes = [JWTAuthentication]
     permission_classes = [IsAuthenticated]
+    fqueryset = Expense.objects.none()  
+    filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
+    filterset_fields = ['currency', 'category__name']
+    search_fields = ['title', 'category__name', 'notes']
+    ordering_fields = ['date', 'amount', 'created_at']
+    ordering = ['-date']
 
     def get_queryset(self):
         queryset = Expense.objects.filter(category__user=self.request.user)
         
+        # Date range filters
         start_date = self.request.query_params.get("start_date")
         end_date = self.request.query_params.get("end_date")
         
@@ -147,3 +154,5 @@ Expense Tracker App
             "total_spent": round(total_spent, 2),
             "categories": categories
         })
+    
+    
