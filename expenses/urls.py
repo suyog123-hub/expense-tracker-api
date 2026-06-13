@@ -1,12 +1,15 @@
+# urls.py (app level)
+
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
-from .views import *
+from .views import CategoryViewSet, ExpenseViewSet, RegisterView, LoginView
 
-# Create a router and register our viewsets
 router = DefaultRouter()
-router.register('categories', CategoryViewSet)
-router.register('expenses',ExpenseViewSet)
+router.register("categories", CategoryViewSet, basename="category")
+router.register("expenses",   ExpenseViewSet,  basename="expense")
 
 urlpatterns = [
-    path('', include(router.urls)),
+    path("", include(router.urls)),
+    path("register/", RegisterView.as_view(), name="register"),  
+    path("login/",    LoginView.as_view(),    name="login"),      
 ]
