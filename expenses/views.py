@@ -10,17 +10,17 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth import authenticate
 from django.contrib.auth.models import User
 from django.db.models import Sum
+from collections import defaultdict
 
 from .models import Category, Expense
-from .serializers import CategorySerializer, ExpenseSerializer,Userserializer
-
+from .serializers import CategorySerializer, ExpenseSerializer, Userserializer
+from .currency import convert_amount, SUPPORTED_CURRENCIES 
 
 
 class RegisterView(generics.CreateAPIView):   
     queryset           = User.objects.all()
     serializer_class   = Userserializer
     permission_classes = [AllowAny]
-
 
 
 class LoginView(APIView):                       
@@ -64,7 +64,6 @@ class LoginView(APIView):
         )
 
 
-
 class CategoryViewSet(viewsets.ModelViewSet):
     serializer_class       = CategorySerializer
     authentication_classes = [JWTAuthentication]   
@@ -77,32 +76,60 @@ class CategoryViewSet(viewsets.ModelViewSet):
         serializer.save(user=self.request.user)
 
 
-
 class ExpenseViewSet(viewsets.ModelViewSet):
-    serializer_class       = ExpenseSerializer
+    serializer_class = ExpenseSerializer
     authentication_classes = [JWTAuthentication]
-    permission_classes     = [IsAuthenticated]
+    permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-  
+        """Get user's expenses with date filtering"""
         queryset = Expense.objects.filter(category__user=self.request.user)
-
+        
         start_date = self.request.query_params.get("start_date")
-        end_date   = self.request.query_params.get("end_date")
-
+        end_date = self.request.query_params.get("end_date")
+        
         if start_date:
             queryset = queryset.filter(date__gte=start_date)
         if end_date:
             queryset = queryset.filter(date__lte=end_date)
-
+        
         return queryset
 
     @action(detail=False, methods=["get"], url_path="summary")
     def expense_summary(self, request):
-        summary = (
-            self.get_queryset()         
-            .values("category__name")
-            .annotate(total=Sum("amount"))
-            .order_by("category__name")
-        )
-        return Response(list(summary))
+        """Get total spent per category in selected currency"""
+        
+        base_currency = request.query_params.get("base_currency", "USD")
+        expenses = self.get_queryset()
+        
+        if not expenses:
+            return Response({
+                "base_currency": base_currency,
+                "categories": [],
+                "total_spent": 0
+            })
+        category_totals = {}
+        total_spent = 0
+        
+        for expense in expenses:
+            cat_name = expense.category.name
+            
+            converted = convert_amount(
+                float(expense.amount), 
+                expense.currency, 
+                base_currency
+            )
+            
+            category_totals[cat_name] = category_totals.get(cat_name, 0) + converted
+            total_spent += converted
+        
+        categories = [
+            {"category": name, "total": round(total, 2)}
+            for name, total in category_totals.items()
+        ]
+        
+        return Response({
+            "base_currency": base_currency,
+            "total_spent": round(total_spent, 2),
+            "categories": categories
+        })
