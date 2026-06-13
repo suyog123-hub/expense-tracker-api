@@ -1,10 +1,10 @@
 from django.db import models
-
+from django.contrib.auth.models import User
 
 class Category(models.Model):
-    name = models.CharField(max_length=100, unique=True)
+    name = models.CharField(max_length=100)
     description = models.CharField(max_length=255, blank=True)
-
+    user = models.ForeignKey(User,on_delete=models.CASCADE,null=True)
     class Meta:
         verbose_name_plural = "categories"
 
