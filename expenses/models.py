@@ -15,6 +15,7 @@ class Category(models.Model):
                         blank=True,
                         help_text="Monthly budget limit in USD",
                     )
+    is_favorite = models.BooleanField(default=False)
     created_at    = models.DateTimeField(auto_now_add=True, null=True)
 
 
