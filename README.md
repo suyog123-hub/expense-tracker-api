@@ -2,7 +2,8 @@
 # Expense Tracker API
 
 A robust RESTful API for managing personal expenses, featuring JWT authentication, multi-currency support, automated budget alerts, and advanced filtering capabilities.
-
+## end point collection
+* ** http://127.0.0.1:8000/swagger/ 
 ## 🚀 Features added 
 
 ### 1. Authentication
