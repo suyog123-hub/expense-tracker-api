@@ -6,5 +6,6 @@ requires-python = ">=3.11"
 dependencies = [
     "django==5.0.6",
     "djangorestframework==3.15.1",
+    "gunicorn>=26.0.0",
     "python-dotenv==1.0.1",
 ]
