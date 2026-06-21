@@ -5,7 +5,7 @@ A robust RESTful API for managing personal expenses, featuring JWT authenticatio
 ## end point collection
 
 http://127.0.0.1:8000/swagger/   ---> search this url to find all the endponit in the localhost
-## 🚀 Features added 
+## 🚀 Features added :
 
 ### 1. Authentication
 * **Overview:** Secure user registration and session management using JWT.
