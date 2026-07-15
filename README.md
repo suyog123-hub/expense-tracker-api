@@ -1,5 +1,5 @@
 
-# Expense Tracker API
+# Expense Tracker
 
 A robust RESTful API for managing personal expenses, featuring JWT authentication, multi-currency support, automated budget alerts, and advanced filtering capabilities.
 ## end point collection
