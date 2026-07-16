@@ -57,7 +57,7 @@ Follow these steps to set up the project on your local machine.
 
 ### Prerequisites
 * Ensure you have [uv](https://github.com/astral-sh/uv) installed on your system.
-* Ensure you have Python 3.12 or higher installed.
+
 
 ### Setup Steps
 ```bash
